@@ -14,7 +14,7 @@
 - 语言自动检测，也可手动指定
 - 默认束搜索（beam search，宽度 5），比贪心解码更准
 - 兜底去重：连续出现完全相同的字幕时只保留一条
-- 图形界面：拖拽文件、进度条、一键取消、自动记住上次的设置
+- 图形界面：拖拽文件、进度条、一键取消、自动保存上次设置
 - 纯 C，界面只用 Win32 API，没有第三方界面库
 
 ## 工作原理
@@ -38,27 +38,14 @@ wsub_gui.exe ──CreateProcess + 匿名管道──▶ wsub.exe（识别在独
 
 ## 编译
 
-**1. 克隆（含子模块）**
+**1. 克隆**
 
 ```powershell
-git clone --recursive https://github.com/<你的用户名>/wsub.git
-cd wsub
+git clone --recursive https://github.com/COM10101/Multilingual-Subtitle-Generation-Tool.git
+cd Multilingual-Subtitle-Generation-Tool
 ```
 
-忘了加 `--recursive` 的话：`git submodule update --init`。
-
-**2. 编译 whisper.cpp（静态库，纯 CPU）**
-
-```powershell
-cd third_party\whisper.cpp
-cmake -B build -G "MinGW Makefiles" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_EXAMPLES=OFF -DWHISPER_BUILD_TESTS=OFF
-cmake --build build -j
-cd ..\..
-```
-
-> `WHISPER_BUILD_EXAMPLES=OFF` 和 `WHISPER_BUILD_TESTS=OFF` 要一起关，否则 CMake 会因为测试找不到 `whisper-cli` 而报错。
-
-**3. 编译 wsub**
+**2. 编译 wsub**
 
 ```powershell
 .\build.ps1
@@ -70,29 +57,27 @@ PowerShell 提示"禁止运行脚本"时：`powershell -ExecutionPolicy Bypass -
 
 ## 下载模型
 
-模型可自行下载，放在任意位置：
+模型自行下载，放在任意位置：
 
 ```powershell
-# 识别模型（二选一或都下）：small 较快，large-v3-turbo 量化版更准、也更慢
+# 识别模型：small 较快，large-v3-turbo 量化版更准、也更慢，可根据需要选择其他模型
 Invoke-WebRequest https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin -OutFile ggml-small.bin
 Invoke-WebRequest https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin -OutFile ggml-large-v3-turbo-q5_0.bin
+...
 
 # VAD 模型（很小，强烈建议下载）
 Invoke-WebRequest https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin -OutFile ggml-silero-v5.1.2.bin
 ```
 
-访问 Hugging Face 慢时，可以把域名换成镜像站 `hf-mirror.com`。
-
 ## 使用
 
 ### 图形界面
 
-运行 `dist\wsub_gui.exe`，选择（或拖入）音视频文件和模型，点"开始识别"。字幕保存在输入文件旁边，同名 `.srt`。设置会保存在 `wsub_gui.ini` 里。
+运行 `dist\wsub_gui.exe`，选择（或拖入）音视频文件和模型，点"开始识别"。字幕保存在输入文件旁边，同名 `.srt`。设置会保存在 `wsub_gui.ini` 中。
 
 ### 命令行
 
 ```powershell
-chcp 65001        # 让控制台正确显示中文
 .\wsub.exe <输入音视频> <模型.bin> [选项]
 ```
 
@@ -115,18 +100,18 @@ chcp 65001        # 让控制台正确显示中文
 - **语言不确定就用 `auto`。** 强制指定错误的语言会让模型编出不相干的文字。
 - **有片头片尾、背景音乐或长时间停顿的视频，务必开 VAD。**
 - 追求准确率：用 `large-v3-turbo` 量化版或更大的模型；追求速度：用 `small` 或 `base`。
-- 控制台输出乱码时先执行 `chcp 65001`。
+- 控制台中文输出乱码时先执行 `chcp 65001`。
 
 ## GPU 加速（实验性）
 
-默认编译出的是纯 CPU 版本。whisper.cpp 支持 CUDA、Vulkan 等后端，但这是**编译 whisper.cpp 时决定的**，不是运行时开关。
+默认编译出的是纯 CPU 版本。whisper.cpp 支持 CUDA、Vulkan 等后端，这是**编译 whisper.cpp 时决定的**，不是运行时开关。
 
-在 Windows 上，CUDA 的 `nvcc` 需要搭配 MSVC（Visual Studio 的 C++ 工具链），不能搭配 MinGW。大致思路：
+在 Windows 上，CUDA 的 `nvcc` 需要搭配 MSVC，不能搭配 MinGW：
 
 1. 安装 Visual Studio Build Tools 和 CUDA Toolkit；
 2. 在 *x64 Native Tools Command Prompt* 里用 `-DGGML_CUDA=ON -DBUILD_SHARED_LIBS=ON` 编译 whisper.cpp；
 3. 用 `cl` 编译 `src\wsub.c` 并链接得到的 `whisper.lib`，把相关 DLL 放在 `wsub.exe` 旁边；
-4. 图形界面不需要改动，直接用新的 `wsub.exe` 即可。
+4. 直接用新的 `wsub.exe` 即可。
 
 运行时日志里出现 `ggml_cuda_init: found 1 CUDA devices` 即说明用上了 GPU。这部分尚未在本仓库中完整验证，欢迎反馈。
 
@@ -152,7 +137,7 @@ gui/wsub_gui.c        Win32 图形界面
 gui/wsub_gui.rc       资源脚本（嵌入 manifest）
 gui/wsub_gui.manifest 启用现代控件外观与 DPI 感知
 build.ps1             一键编译脚本
-third_party/          whisper.cpp（git 子模块）
+third_party/          whisper.cpp
 ```
 
 ## 致谢与许可
