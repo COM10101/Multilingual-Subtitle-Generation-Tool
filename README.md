@@ -147,4 +147,4 @@ third_party/          whisper.cpp
 - [whisper.cpp](https://github.com/ggml-org/whisper.cpp)（MIT）
 - [OpenAI Whisper](https://github.com/openai/whisper)（MIT）
 - [Silero VAD](https://github.com/snakers4/silero-vad)（MIT）
-- [FFmpeg](https://ffmpeg.org/)：本项目不分发，由用户自行安装，使用时请遵守其许可证
+- [FFmpeg](https://ffmpeg.org/)：本项目不分发，请自行安装，使用时请遵守其许可证
